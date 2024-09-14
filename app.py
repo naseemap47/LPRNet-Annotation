@@ -37,15 +37,25 @@ class ImageLabelingApp(QMainWindow):
         open_label_dir_action.triggered.connect(self.open_label_directory)
         fileMenu.addAction(open_label_dir_action)
 
-        # Main layout (using QSplitter for side menu and main content)
-        main_layout = QHBoxLayout()
+        # Main layout (using QVBoxLayout for the overall layout)
+        main_layout = QVBoxLayout()
 
+        # Create a top layout for the completion label and progress bar
+        top_layout = QHBoxLayout()
+
+        # Completion label (e.g., "3/10 images labeled")
+        self.completion_label = QLabel("0/0 images labeled", self)
+        top_layout.addWidget(self.completion_label)
+
+        # Add Progress Bar
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setValue(0)
+        top_layout.addWidget(self.progress_bar)
+
+        main_layout.addLayout(top_layout)
+
+        # Create a QSplitter for separating the image display and the list of images
         splitter = QSplitter()
-
-        # List widget for image names
-        self.image_list_widget = QListWidget()
-        self.image_list_widget.clicked.connect(self.on_image_list_click)
-        splitter.addWidget(self.image_list_widget)
 
         # Right side layout (Image display, text field, and buttons)
         right_layout = QVBoxLayout()
@@ -77,16 +87,17 @@ class ImageLabelingApp(QMainWindow):
         self.submit_button.clicked.connect(self.save_label)
         right_layout.addWidget(self.submit_button)
 
-        # Add Progress Bar
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setValue(0)
-        right_layout.addWidget(self.progress_bar)
-
         # Add right layout to a widget and then to the splitter
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
         splitter.addWidget(right_widget)
 
+        # Image list (moved to the right side)
+        self.image_list_widget = QListWidget()
+        self.image_list_widget.clicked.connect(self.on_image_list_click)
+        splitter.addWidget(self.image_list_widget)
+
+        # Add splitter to main layout
         main_layout.addWidget(splitter)
 
         # Set central widget
@@ -102,7 +113,7 @@ class ImageLabelingApp(QMainWindow):
             self.current_image_index = 0
             self.load_image_list()
             self.show_image()
-            self.update_progress()  # Update the progress bar after loading images
+            self.update_progress()  # Update the progress bar and label after loading images
 
     def open_label_directory(self):
         # Open a file dialog to select the labels directory
@@ -183,20 +194,21 @@ class ImageLabelingApp(QMainWindow):
             current_item = self.image_list_widget.item(self.current_image_index)
             self.update_image_item_status(current_item, self.image_list[self.current_image_index])
 
-            # Update progress bar
+            # Update progress bar and completion label
             self.update_progress()
 
     def update_progress(self):
-        """Update the progress bar based on the number of completed images."""
+        """Update the progress bar and completion label based on the number of completed images."""
         total_images = len(self.image_list)
         completed_images = len(self.completed_images)
-        print("total_images", total_images, completed_images)
 
         if ((total_images > 0) and (completed_images > 0)):
             progress = int((completed_images / total_images) * 100)
             self.progress_bar.setValue(progress)
+            self.completion_label.setText(f"{completed_images}/{total_images} images labeled")
         else:
             self.progress_bar.setValue(0)
+            self.completion_label.setText("0/0 images labeled")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
