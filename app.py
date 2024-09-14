@@ -1,8 +1,9 @@
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QPushButton, QLineEdit, QFileDialog,
-    QVBoxLayout, QWidget, QAction, QMenuBar, QHBoxLayout, QListWidget, QListWidgetItem, QSplitter, QProgressBar
+    QApplication, QMainWindow, QLabel, QPushButton, QLineEdit, 
+    QFileDialog, QVBoxLayout, QWidget, QAction, QMessageBox, 
+    QHBoxLayout, QListWidget, QListWidgetItem, QSplitter, QProgressBar
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
@@ -203,37 +204,43 @@ class ImageLabelingApp(QMainWindow):
             self.update_progress()
 
     def delete_current_image(self):
-        """Delete the current image from the directory and remove it from the list."""
+        """Delete the current image from the directory after confirmation."""
         if self.image_list and self.image_dir:
             image_name = self.image_list[self.current_image_index]
             image_path = os.path.join(self.image_dir, image_name)
 
-            # Confirm the file exists and delete it
-            if os.path.exists(image_path):
-                os.remove(image_path)
+            # Show confirmation dialog
+            reply = QMessageBox.question(self, 'Confirm Deletion',
+                                         f"Are you sure you want to delete '{image_name}'?",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-                # Remove the corresponding label file if it exists
-                if self.label_dir:
-                    label_path = os.path.join(self.label_dir, f"{os.path.splitext(image_name)[0]}.txt")
-                    if os.path.exists(label_path):
-                        os.remove(label_path)
+            if reply == QMessageBox.Yes:
+                # Confirm the file exists and delete it
+                if os.path.exists(image_path):
+                    os.remove(image_path)
 
-                # Remove the image from the list
-                self.image_list.pop(self.current_image_index)
-                self.image_list_widget.takeItem(self.current_image_index)
+                    # Remove the corresponding label file if it exists
+                    if self.label_dir:
+                        label_path = os.path.join(self.label_dir, f"{os.path.splitext(image_name)[0]}.txt")
+                        if os.path.exists(label_path):
+                            os.remove(label_path)
 
-                # Reset the current image index if needed
-                if self.current_image_index >= len(self.image_list):
-                    self.current_image_index = len(self.image_list) - 1
+                    # Remove the image from the list
+                    self.image_list.pop(self.current_image_index)
+                    self.image_list_widget.takeItem(self.current_image_index)
 
-                # Update the displayed image
-                if self.image_list:
-                    self.show_image()
-                else:
-                    self.image_label.clear()  # Clear the image display if no images are left
+                    # Reset the current image index if needed
+                    if self.current_image_index >= len(self.image_list):
+                        self.current_image_index = len(self.image_list) - 1
 
-                # Update progress bar and completion label
-                self.update_progress()
+                    # Update the displayed image
+                    if self.image_list:
+                        self.show_image()
+                    else:
+                        self.image_label.clear()  # Clear the image display if no images are left
+
+                    # Update progress bar and completion label
+                    self.update_progress()
 
     def update_progress(self):
         """Update the progress bar and completion label based on the number of completed images."""
