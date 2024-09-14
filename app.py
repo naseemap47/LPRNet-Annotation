@@ -87,6 +87,11 @@ class ImageLabelingApp(QMainWindow):
         self.submit_button.clicked.connect(self.save_label)
         right_layout.addWidget(self.submit_button)
 
+        # Delete button
+        self.delete_button = QPushButton('Delete Image', self)
+        self.delete_button.clicked.connect(self.delete_current_image)
+        right_layout.addWidget(self.delete_button)
+
         # Add right layout to a widget and then to the splitter
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
@@ -196,6 +201,39 @@ class ImageLabelingApp(QMainWindow):
 
             # Update progress bar and completion label
             self.update_progress()
+
+    def delete_current_image(self):
+        """Delete the current image from the directory and remove it from the list."""
+        if self.image_list and self.image_dir:
+            image_name = self.image_list[self.current_image_index]
+            image_path = os.path.join(self.image_dir, image_name)
+
+            # Confirm the file exists and delete it
+            if os.path.exists(image_path):
+                os.remove(image_path)
+
+                # Remove the corresponding label file if it exists
+                if self.label_dir:
+                    label_path = os.path.join(self.label_dir, f"{os.path.splitext(image_name)[0]}.txt")
+                    if os.path.exists(label_path):
+                        os.remove(label_path)
+
+                # Remove the image from the list
+                self.image_list.pop(self.current_image_index)
+                self.image_list_widget.takeItem(self.current_image_index)
+
+                # Reset the current image index if needed
+                if self.current_image_index >= len(self.image_list):
+                    self.current_image_index = len(self.image_list) - 1
+
+                # Update the displayed image
+                if self.image_list:
+                    self.show_image()
+                else:
+                    self.image_label.clear()  # Clear the image display if no images are left
+
+                # Update progress bar and completion label
+                self.update_progress()
 
     def update_progress(self):
         """Update the progress bar and completion label based on the number of completed images."""
