@@ -1,77 +1,205 @@
-import streamlit as st
+import sys
 import os
-import glob
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QPushButton, QLineEdit, QFileDialog,
+    QVBoxLayout, QWidget, QAction, QMenuBar, QHBoxLayout, QListWidget, QListWidgetItem, QSplitter, QProgressBar
+)
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 
+class ImageLabelingApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.image_dir = None
+        self.label_dir = None
+        self.image_list = []
+        self.current_image_index = 0
+        self.completed_images = set()  # Set to keep track of completed images
 
-st.title('LPRNet Annotation')
-st.sidebar.title("Settings")
-col1, col2 = st.columns(2)
+        self.initUI()
 
-if 'counter' not in st.session_state: 
-    st.session_state.counter = 0
+    def initUI(self):
+        # Set window title and size
+        self.setWindowTitle("Image Labeling App")
+        self.setGeometry(100, 100, 1000, 600)
 
-side_bar =  st.sidebar.form("my_form")
-imgs_dir = side_bar.text_input('Path to Images')
-is_imgs_dir = os.path.exists(imgs_dir)
-# print(imgs_path)
-txts_dir = side_bar.text_input('Path to Labels')
-is_txts_dir = os.path.exists(txts_dir)
-# print(txts_path)
-start = side_bar.form_submit_button("Submit")
-# print(submit)
+        # Create Menu Bar
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('Files')
 
-if start:
-    if not is_imgs_dir:
-        side_bar.error(f"[ERROR] {imgs_dir} not exit")
-    else:
-        side_bar.success(f"[INFO] Loaded {imgs_dir}")
-    
-    if not is_txts_dir:
-        side_bar.error(f"[ERROR] {txts_dir} not exit")
-        os.makedirs(txts_dir, exist_ok=True)
-        side_bar.success(f"[INFO] Created {txts_dir}")
-    else:
-        st.success(f"[INFO] Loaded {txts_dir}")
+        # Add Open Image Directory action
+        open_image_dir_action = QAction('Open Image Directory', self)
+        open_image_dir_action.triggered.connect(self.open_image_directory)
+        fileMenu.addAction(open_image_dir_action)
 
-if is_imgs_dir:
-    img_list = glob.glob(os.path.join(imgs_dir, "*.jpg")) + \
-               glob.glob(os.path.join(imgs_dir, "*.jpeg")) + \
-               glob.glob(os.path.join(imgs_dir, "*.png"))
-    img_list = sorted(img_list)
-    def showPhoto(photo):
-        col1.image(photo,caption=photo)
-        col1.write(f"Index as a session_state attribute: {st.session_state.counter}")
-        
-        ## Increments the counter to get next photo
-        st.session_state.counter += 1
-        if st.session_state.counter >= len(img_list):
-            st.session_state.counter = 0
+        # Add Open Labels Directory action
+        open_label_dir_action = QAction('Open Labels Path', self)
+        open_label_dir_action.triggered.connect(self.open_label_directory)
+        fileMenu.addAction(open_label_dir_action)
 
-    # col1.subheader("List of images in folder")
-    # col1.write(img_list)
+        # Main layout (using QSplitter for side menu and main content)
+        main_layout = QHBoxLayout()
 
-    # Select photo a send it to button
-    name = os.path.splitext(os.path.split(img_list[st.session_state.counter-1])[1])[0]
-    img_path = img_list[st.session_state.counter]
-    # print(img_list, imgs_path)
-    # for img_path in img_list:
-    #     # img_path = img_list[0]
-    txt_name = name + ".txt"
-    txt_path = os.path.join(txts_dir, txt_name)
-    # with col1:
-    # col1.subheader(img_path)
-    # col1.image(img_path)
-    # with col3:
-    col2.subheader(txt_name)
-    # is_txt_path = os.path.exists(txt_path)
-    file_txt = open(txt_path, 'w+')
-    number_plate = file_txt.read()
-    anot_txt = col2.text_input('number_plate', number_plate)
+        splitter = QSplitter()
 
-    show_btn = col2.button("Show next Image ⏭️",on_click=showPhoto,args=([img_path]))
-    
-    if st.button("Submit"):
-        print(anot_txt, type(anot_txt))
-        file_txt.write(anot_txt)
-        file_txt.close()
-    
+        # List widget for image names
+        self.image_list_widget = QListWidget()
+        self.image_list_widget.clicked.connect(self.on_image_list_click)
+        splitter.addWidget(self.image_list_widget)
+
+        # Right side layout (Image display, text field, and buttons)
+        right_layout = QVBoxLayout()
+
+        # Image label (to show the image)
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(self.image_label)
+
+        # Text field for image description
+        self.text_field = QLineEdit(self)
+        right_layout.addWidget(self.text_field)
+
+        # Navigation buttons
+        nav_layout = QHBoxLayout()
+
+        self.prev_button = QPushButton('Previous', self)
+        self.prev_button.clicked.connect(self.show_previous_image)
+        nav_layout.addWidget(self.prev_button)
+
+        self.next_button = QPushButton('Next', self)
+        self.next_button.clicked.connect(self.show_next_image)
+        nav_layout.addWidget(self.next_button)
+
+        right_layout.addLayout(nav_layout)
+
+        # Submit button
+        self.submit_button = QPushButton('Submit', self)
+        self.submit_button.clicked.connect(self.save_label)
+        right_layout.addWidget(self.submit_button)
+
+        # Add Progress Bar
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setValue(0)
+        right_layout.addWidget(self.progress_bar)
+
+        # Add right layout to a widget and then to the splitter
+        right_widget = QWidget()
+        right_widget.setLayout(right_layout)
+        splitter.addWidget(right_widget)
+
+        main_layout.addWidget(splitter)
+
+        # Set central widget
+        container = QWidget()
+        container.setLayout(main_layout)
+        self.setCentralWidget(container)
+
+    def open_image_directory(self):
+        # Open a file dialog to select the image directory
+        self.image_dir = QFileDialog.getExistingDirectory(self, "Select Image Directory")
+        if self.image_dir:
+            self.image_list = [f for f in os.listdir(self.image_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            self.current_image_index = 0
+            self.load_image_list()
+            self.show_image()
+            self.update_progress()  # Update the progress bar after loading images
+
+    def open_label_directory(self):
+        # Open a file dialog to select the labels directory
+        self.label_dir = QFileDialog.getExistingDirectory(self, "Select Labels Path")
+        if self.label_dir:
+            self.load_image_list()  # Load the image list with the updated labels path
+            self.update_progress()  # Update progress based on loaded labels
+
+    def load_image_list(self):
+        """Load the images into the QListWidget and check their label status."""
+        self.image_list_widget.clear()
+        for image_name in self.image_list:
+            item = QListWidgetItem(image_name)
+            self.image_list_widget.addItem(item)
+            self.update_image_item_status(item, image_name)
+
+    def update_image_item_status(self, item, image_name):
+        """Update the QListWidgetItem status with a tick if the label is completed."""
+        if self.label_dir:
+            label_path = os.path.join(self.label_dir, f"{os.path.splitext(image_name)[0]}.txt")
+            if os.path.exists(label_path):
+                item.setCheckState(Qt.Checked)
+                self.completed_images.add(image_name)
+            else:
+                item.setCheckState(Qt.Unchecked)
+
+    def show_image(self):
+        # Display the current image
+        if self.image_list:
+            image_path = os.path.join(self.image_dir, self.image_list[self.current_image_index])
+            pixmap = QPixmap(image_path)
+            self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio))
+
+            # Clear the text field before loading any previous label
+            self.text_field.setText('')
+
+            # Load label if exists
+            self.load_label_if_exists()
+
+    def load_label_if_exists(self):
+        """Load the label for the current image if it exists."""
+        if self.label_dir and self.image_list:
+            image_name = os.path.splitext(self.image_list[self.current_image_index])[0]
+            label_path = os.path.join(self.label_dir, f"{image_name}.txt")
+            if os.path.exists(label_path):
+                with open(label_path, 'r') as label_file:
+                    label_text = label_file.read()
+                    self.text_field.setText(label_text)
+
+    def show_next_image(self):
+        # Show the next image in the directory
+        if self.image_list and self.current_image_index < len(self.image_list) - 1:
+            self.current_image_index += 1
+            self.image_list_widget.setCurrentRow(self.current_image_index)
+            self.show_image()
+
+    def show_previous_image(self):
+        # Show the previous image in the directory
+        if self.image_list and self.current_image_index > 0:
+            self.current_image_index -= 1
+            self.image_list_widget.setCurrentRow(self.current_image_index)
+            self.show_image()
+
+    def on_image_list_click(self):
+        """Handle image selection from the list."""
+        self.current_image_index = self.image_list_widget.currentRow()
+        self.show_image()
+
+    def save_label(self):
+        # Save the label in the label path with the same name as the image
+        if self.label_dir and self.image_list:
+            image_name = os.path.splitext(self.image_list[self.current_image_index])[0]
+            label_path = os.path.join(self.label_dir, f"{image_name}.txt")
+            with open(label_path, 'w') as label_file:
+                label_file.write(self.text_field.text())
+
+            # Mark the image as completed in the list
+            current_item = self.image_list_widget.item(self.current_image_index)
+            self.update_image_item_status(current_item, self.image_list[self.current_image_index])
+
+            # Update progress bar
+            self.update_progress()
+
+    def update_progress(self):
+        """Update the progress bar based on the number of completed images."""
+        total_images = len(self.image_list)
+        completed_images = len(self.completed_images)
+        print("total_images", total_images, completed_images)
+
+        if ((total_images > 0) and (completed_images > 0)):
+            progress = int((completed_images / total_images) * 100)
+            self.progress_bar.setValue(progress)
+        else:
+            self.progress_bar.setValue(0)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = ImageLabelingApp()
+    ex.show()
+    sys.exit(app.exec_())
