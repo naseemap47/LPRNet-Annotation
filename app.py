@@ -2,7 +2,8 @@ import sys
 import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QMenuBar,
                              QAction, QLabel, QPushButton, QVBoxLayout,
-                             QWidget, QFileDialog)
+                             QWidget, QFileDialog, QListWidget, QProgressBar,
+                             QHBoxLayout)
 from PyQt5.QtGui import QPixmap
 
 class ImageLabeler(QMainWindow):
@@ -36,37 +37,52 @@ class ImageLabeler(QMainWindow):
         # Central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
+        self.layout = QHBoxLayout(self.central_widget)
+
+        # Left side layout for image display and controls
+        left_layout = QVBoxLayout()
+        
+        # Progress Bar
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setValue(0)
+        left_layout.addWidget(self.progress_bar)
 
         # Image display
         self.image_label = QLabel(self)
-        self.layout.addWidget(self.image_label)
+        left_layout.addWidget(self.image_label)
 
         # Label display
         self.label_display = QLabel(self)
-        self.layout.addWidget(self.label_display)
+        left_layout.addWidget(self.label_display)
 
         # Navigation buttons
         self.prev_button = QPushButton("Previous Image", self)
         self.prev_button.clicked.connect(self.prev_image)
-        self.layout.addWidget(self.prev_button)
+        left_layout.addWidget(self.prev_button)
 
         self.next_button = QPushButton("Next Image", self)
         self.next_button.clicked.connect(self.next_image)
-        self.layout.addWidget(self.next_button)
+        left_layout.addWidget(self.next_button)
 
         # OK and Not OK buttons
         self.ok_button = QPushButton("OK", self)
         self.ok_button.clicked.connect(self.increment_ok)
-        self.layout.addWidget(self.ok_button)
+        left_layout.addWidget(self.ok_button)
 
         self.not_ok_button = QPushButton("Not OK", self)
         self.not_ok_button.clicked.connect(self.increment_not_ok)
-        self.layout.addWidget(self.not_ok_button)
+        left_layout.addWidget(self.not_ok_button)
 
         # Count display
         self.count_display = QLabel(f"OK: {self.ok_count} | Not OK: {self.not_ok_count}", self)
-        self.layout.addWidget(self.count_display)
+        left_layout.addWidget(self.count_display)
+
+        self.layout.addLayout(left_layout)
+
+        # Right side layout for image list
+        self.image_list = QListWidget(self)
+        self.image_list.itemClicked.connect(self.select_image)
+        self.layout.addWidget(self.image_list)
 
     def open_image_directory(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Image Directory")
@@ -74,7 +90,10 @@ class ImageLabeler(QMainWindow):
             self.image_paths = [os.path.join(directory, f) for f in os.listdir(directory)
                                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
             self.current_index = 0
+            self.image_list.clear()
+            self.image_list.addItems([os.path.basename(img) for img in self.image_paths])
             self.load_image()
+            self.update_progress_bar()
 
     def open_labels_path(self):
         path = QFileDialog.getExistingDirectory(self, "Select Labels Directory")
@@ -91,6 +110,7 @@ class ImageLabeler(QMainWindow):
             pixmap = QPixmap(self.image_paths[self.current_index])
             self.image_label.setPixmap(pixmap.scaled(600, 400, aspectRatioMode=True))
             self.load_label()
+            self.update_progress_bar()
 
     def load_label(self):
         image_name = os.path.basename(self.image_paths[self.current_index])
@@ -107,16 +127,28 @@ class ImageLabeler(QMainWindow):
             self.current_index -= 1
             self.load_image()
 
+    def select_image(self, item):
+        self.current_index = self.image_list.currentRow()
+        self.load_image()
+
     def increment_ok(self):
         self.ok_count += 1
         self.update_count_display()
+        self.update_progress_bar()
 
     def increment_not_ok(self):
         self.not_ok_count += 1
         self.update_count_display()
+        self.update_progress_bar()
 
     def update_count_display(self):
         self.count_display.setText(f"OK: {self.ok_count} | Not OK: {self.not_ok_count}")
+
+    def update_progress_bar(self):
+        total_images = len(self.image_paths)
+        completed = self.ok_count + self.not_ok_count
+        self.progress_bar.setMaximum(total_images)
+        self.progress_bar.setValue(completed)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
