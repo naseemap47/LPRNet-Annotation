@@ -1,10 +1,11 @@
 import sys
 import os
+import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QMenuBar,
                              QAction, QLabel, QPushButton, QVBoxLayout,
                              QWidget, QFileDialog, QListWidget, QProgressBar,
                              QHBoxLayout)
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QPixmap
 
 class ImageLabeler(QMainWindow):
     def __init__(self):
@@ -18,7 +19,9 @@ class ImageLabeler(QMainWindow):
         self.current_index = 0
         self.ok_count = 0
         self.not_ok_count = 0
+        self.completed_images = []
 
+        self.load_state()  # Load state from file if exists
         self.init_ui()
 
     def init_ui(self):
@@ -84,14 +87,45 @@ class ImageLabeler(QMainWindow):
         self.image_list.itemClicked.connect(self.select_image)
         self.layout.addWidget(self.image_list)
 
+        self.update_image_list()  # Update the list with previously loaded images
+
+    def load_state(self):
+        try:
+            with open('state.json', 'r') as file:
+                state = json.load(file)
+                self.ok_count = state.get('ok_count', 0)
+                self.not_ok_count = state.get('not_ok_count', 0)
+                self.completed_images = state.get('completed_images', [])
+                self.image_paths = state.get('image_paths', [])
+                self.current_index = state.get('current_index', 0)
+        except FileNotFoundError:
+            pass  # File not found, just start fresh
+        except json.JSONDecodeError:
+            pass  # Error reading JSON, just start fresh
+
+    def save_state(self):
+        state = {
+            'ok_count': self.ok_count,
+            'not_ok_count': self.not_ok_count,
+            'completed_images': self.completed_images,
+            'image_paths': self.image_paths,
+            'current_index': self.current_index,
+        }
+        with open('state.json', 'w') as file:
+            json.dump(state, file)
+
+    def closeEvent(self, event):
+        self.save_state()  # Save state when closing
+        event.accept()  # Accept the event
+
     def open_image_directory(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Image Directory")
         if directory:
             self.image_paths = [os.path.join(directory, f) for f in os.listdir(directory)
                                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-            self.current_index = 0
             self.image_list.clear()
             self.image_list.addItems([os.path.basename(img) for img in self.image_paths])
+            self.update_image_list()  # Mark previously completed images
             self.load_image()
             self.update_progress_bar()
 
@@ -156,6 +190,16 @@ class ImageLabeler(QMainWindow):
         item = self.image_list.item(self.current_index)
         if item:
             item.setCheckState(2)  # Check the item (mark as completed)
+            self.completed_images.append(os.path.basename(self.image_paths[self.current_index]))
+            self.update_image_list()  # Update the image list to reflect completed state
+
+    def update_image_list(self):
+        for i in range(self.image_list.count()):
+            item = self.image_list.item(i)
+            if os.path.basename(self.image_paths[i]) in self.completed_images:
+                item.setCheckState(2)  # Check the item if completed
+            else:
+                item.setCheckState(0)  # Uncheck the item if not completed
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
