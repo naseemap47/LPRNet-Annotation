@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QMenuBar,
                              QAction, QLabel, QPushButton, QVBoxLayout,
                              QWidget, QFileDialog, QListWidget, QProgressBar,
                              QHBoxLayout)
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QFont
 
 class ImageLabeler(QMainWindow):
     def __init__(self):
@@ -134,11 +134,13 @@ class ImageLabeler(QMainWindow):
     def increment_ok(self):
         self.ok_count += 1
         self.update_count_display()
+        self.mark_image_completed()  # Mark the image as completed
         self.next_image()  # Go to the next image after pressing OK
 
     def increment_not_ok(self):
         self.not_ok_count += 1
         self.update_count_display()
+        self.mark_image_completed()  # Mark the image as completed
         self.next_image()  # Go to the next image after pressing Not OK
 
     def update_count_display(self):
@@ -149,6 +151,11 @@ class ImageLabeler(QMainWindow):
         completed = self.ok_count + self.not_ok_count
         self.progress_bar.setMaximum(total_images)
         self.progress_bar.setValue(completed)
+
+    def mark_image_completed(self):
+        item = self.image_list.item(self.current_index)
+        if item:
+            item.setCheckState(2)  # Check the item (mark as completed)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
