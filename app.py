@@ -134,12 +134,12 @@ class ImageLabeler(QMainWindow):
     def increment_ok(self):
         self.ok_count += 1
         self.update_count_display()
-        self.update_progress_bar()
+        self.next_image()  # Go to the next image after pressing OK
 
     def increment_not_ok(self):
         self.not_ok_count += 1
         self.update_count_display()
-        self.update_progress_bar()
+        self.next_image()  # Go to the next image after pressing Not OK
 
     def update_count_display(self):
         self.count_display.setText(f"OK: {self.ok_count} | Not OK: {self.not_ok_count}")
