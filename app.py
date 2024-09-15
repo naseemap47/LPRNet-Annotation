@@ -3,8 +3,9 @@ import os
 import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QLabel, QPushButton, 
                              QVBoxLayout, QWidget, QFileDialog, QListWidget, QProgressBar,
-                             QHBoxLayout, QFrame)
+                             QHBoxLayout, QFrame, QScrollArea)
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 
 class ImageLabeler(QMainWindow):
     def __init__(self):
@@ -19,6 +20,7 @@ class ImageLabeler(QMainWindow):
         self.ok_count = 0
         self.not_ok_count = 0
         self.completed_images = []
+        self.scale_factor = 1.0
 
         self.load_state()  # Load state from file if exists
         self.init_ui()
@@ -49,9 +51,17 @@ class ImageLabeler(QMainWindow):
         self.progress_bar.setValue(0)
         left_layout.addWidget(self.progress_bar)
 
-        # Image display
+        # Image display with scroll area for zoom functionality
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
         self.image_label = QLabel(self)
-        left_layout.addWidget(self.image_label)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.scroll_area.setWidget(self.image_label)
+        left_layout.addWidget(self.scroll_area)
+
+        # # Image display
+        # self.image_label = QLabel(self)
+        # left_layout.addWidget(self.image_label)
 
         # Label display
         self.label_display = QLabel(self)
@@ -67,6 +77,19 @@ class ImageLabeler(QMainWindow):
         counter_layout.addWidget(self.ok_count_label)
         counter_layout.addWidget(self.not_ok_count_label)
         left_layout.addWidget(counter_frame)
+
+        # Zoom buttons layout
+        zoom_buttons_layout = QHBoxLayout()
+        self.zoom_in_button = QPushButton("Zoom In", self)
+        self.zoom_in_button.clicked.connect(self.zoom_in)
+        zoom_buttons_layout.addWidget(self.zoom_in_button)
+
+        self.zoom_out_button = QPushButton("Zoom Out", self)
+        self.zoom_out_button.clicked.connect(self.zoom_out)
+        zoom_buttons_layout.addWidget(self.zoom_out_button)
+
+        left_layout.addLayout(zoom_buttons_layout)  # Add this layout to the left layout
+        self.layout.addLayout(left_layout)
 
         # Navigation buttons (Previous and Next side by side)
         nav_buttons_layout = QHBoxLayout()
@@ -94,6 +117,7 @@ class ImageLabeler(QMainWindow):
 
         # Right side layout for image list
         self.image_list = QListWidget(self)
+        self.image_list.setFixedWidth(150)  # Set a fixed width for the image list
         self.image_list.itemClicked.connect(self.select_image)
         self.layout.addWidget(self.image_list)
 
@@ -152,9 +176,11 @@ class ImageLabeler(QMainWindow):
     def load_image(self):
         if self.image_paths:
             pixmap = QPixmap(self.image_paths[self.current_index])
-            self.image_label.setPixmap(pixmap.scaled(600, 400, aspectRatioMode=True))
-            self.load_label()
-            self.update_progress_bar()
+            self.image_label.setPixmap(pixmap.scaled(int(600 * self.scale_factor), 
+                                                    int(400 * self.scale_factor), 
+                                                    aspectRatioMode=Qt.KeepAspectRatio))
+            self.update_progress_bar()  # Update progress bar after loading the image
+
 
     def load_label(self):
         image_name = os.path.basename(self.image_paths[self.current_index])
@@ -211,6 +237,15 @@ class ImageLabeler(QMainWindow):
                 item.setCheckState(2)  # Check the item if completed
             else:
                 item.setCheckState(0)  # Uncheck the item if not completed
+    
+    def zoom_in(self):
+        self.scale_factor *= 1.1  # Increase scale factor for zoom in
+        self.load_image()  # Reload image with the new scale
+
+    def zoom_out(self):
+        self.scale_factor /= 1.1  # Decrease scale factor for zoom out
+        self.load_image()  # Reload image with the new scale
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
