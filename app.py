@@ -1,10 +1,9 @@
 import sys
 import os
 import json
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QMenuBar,
-                             QAction, QLabel, QPushButton, QVBoxLayout,
-                             QWidget, QFileDialog, QListWidget, QProgressBar,
-                             QHBoxLayout)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QLabel, QPushButton, 
+                             QVBoxLayout, QWidget, QFileDialog, QListWidget, QProgressBar,
+                             QHBoxLayout, QFrame)
 from PyQt5.QtGui import QPixmap
 
 class ImageLabeler(QMainWindow):
@@ -44,7 +43,7 @@ class ImageLabeler(QMainWindow):
 
         # Left side layout for image display and controls
         left_layout = QVBoxLayout()
-        
+
         # Progress Bar
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setValue(0)
@@ -58,27 +57,38 @@ class ImageLabeler(QMainWindow):
         self.label_display = QLabel(self)
         left_layout.addWidget(self.label_display)
 
-        # Navigation buttons
+        # OK and Not OK counter display widget
+        counter_frame = QFrame(self)
+        counter_layout = QHBoxLayout()
+        counter_frame.setLayout(counter_layout)
+        counter_frame.setFrameShape(QFrame.StyledPanel)
+        self.ok_count_label = QLabel(f"OK: {self.ok_count}", self)
+        self.not_ok_count_label = QLabel(f"Not OK: {self.not_ok_count}", self)
+        counter_layout.addWidget(self.ok_count_label)
+        counter_layout.addWidget(self.not_ok_count_label)
+        left_layout.addWidget(counter_frame)
+
+        # Navigation buttons (Previous and Next side by side)
+        nav_buttons_layout = QHBoxLayout()
         self.prev_button = QPushButton("Previous Image", self)
         self.prev_button.clicked.connect(self.prev_image)
-        left_layout.addWidget(self.prev_button)
+        nav_buttons_layout.addWidget(self.prev_button)
 
         self.next_button = QPushButton("Next Image", self)
         self.next_button.clicked.connect(self.next_image)
-        left_layout.addWidget(self.next_button)
+        nav_buttons_layout.addWidget(self.next_button)
+        left_layout.addLayout(nav_buttons_layout)
 
-        # OK and Not OK buttons
+        # OK and Not OK buttons (side by side)
+        action_buttons_layout = QHBoxLayout()
         self.ok_button = QPushButton("OK", self)
         self.ok_button.clicked.connect(self.increment_ok)
-        left_layout.addWidget(self.ok_button)
+        action_buttons_layout.addWidget(self.ok_button)
 
         self.not_ok_button = QPushButton("Not OK", self)
         self.not_ok_button.clicked.connect(self.increment_not_ok)
-        left_layout.addWidget(self.not_ok_button)
-
-        # Count display
-        self.count_display = QLabel(f"OK: {self.ok_count} | Not OK: {self.not_ok_count}", self)
-        left_layout.addWidget(self.count_display)
+        action_buttons_layout.addWidget(self.not_ok_button)
+        left_layout.addLayout(action_buttons_layout)
 
         self.layout.addLayout(left_layout)
 
@@ -178,7 +188,8 @@ class ImageLabeler(QMainWindow):
         self.next_image()  # Go to the next image after pressing Not OK
 
     def update_count_display(self):
-        self.count_display.setText(f"OK: {self.ok_count} | Not OK: {self.not_ok_count}")
+        self.ok_count_label.setText(f"OK: {self.ok_count}")
+        self.not_ok_count_label.setText(f"Not OK: {self.not_ok_count}")
 
     def update_progress_bar(self):
         total_images = len(self.image_paths)
