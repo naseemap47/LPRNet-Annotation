@@ -59,13 +59,11 @@ class ImageLabeler(QMainWindow):
         self.scroll_area.setWidget(self.image_label)
         left_layout.addWidget(self.scroll_area)
 
-        # # Image display
-        # self.image_label = QLabel(self)
-        # left_layout.addWidget(self.image_label)
-
-        # Label display
+        # Label display widget
         self.label_display = QLabel(self)
+        self.label_display.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.label_display)
+
 
         # OK and Not OK counter display widget
         counter_frame = QFrame(self)
@@ -80,16 +78,14 @@ class ImageLabeler(QMainWindow):
 
         # Zoom buttons layout
         zoom_buttons_layout = QHBoxLayout()
-        self.zoom_in_button = QPushButton("Zoom In", self)
-        self.zoom_in_button.clicked.connect(self.zoom_in)
-        zoom_buttons_layout.addWidget(self.zoom_in_button)
-
         self.zoom_out_button = QPushButton("Zoom Out", self)
         self.zoom_out_button.clicked.connect(self.zoom_out)
         zoom_buttons_layout.addWidget(self.zoom_out_button)
-
-        left_layout.addLayout(zoom_buttons_layout)  # Add this layout to the left layout
-        self.layout.addLayout(left_layout)
+        
+        self.zoom_in_button = QPushButton("Zoom In", self)
+        self.zoom_in_button.clicked.connect(self.zoom_in)
+        zoom_buttons_layout.addWidget(self.zoom_in_button)
+        left_layout.addLayout(zoom_buttons_layout)
 
         # Navigation buttons (Previous and Next side by side)
         nav_buttons_layout = QHBoxLayout()
@@ -117,7 +113,7 @@ class ImageLabeler(QMainWindow):
 
         # Right side layout for image list
         self.image_list = QListWidget(self)
-        self.image_list.setFixedWidth(150)  # Set a fixed width for the image list
+        self.image_list.setFixedWidth(150)
         self.image_list.itemClicked.connect(self.select_image)
         self.layout.addWidget(self.image_list)
 
@@ -181,21 +177,26 @@ class ImageLabeler(QMainWindow):
                                                     aspectRatioMode=Qt.KeepAspectRatio))
             self.update_progress_bar()  # Update progress bar after loading the image
 
-
     def load_label(self):
-        image_name = os.path.basename(self.image_paths[self.current_index])
-        label_name = image_name[:-4]  # Remove extension
-        self.label_display.setText(self.labels.get(label_name, "No label found"))
+        if self.image_paths:
+            image_name = os.path.basename(self.image_paths[self.current_index])
+            label_name = image_name[:-4]  # Remove the image extension to match the label filename
+            label_text = self.labels.get(label_name, "No label found")
+            self.label_display.setText(label_text)  # Update the label display widget
+
 
     def next_image(self):
         if self.image_paths and self.current_index < len(self.image_paths) - 1:
             self.current_index += 1
             self.load_image()
+            self.load_label()  # Load corresponding label after loading image
 
     def prev_image(self):
         if self.image_paths and self.current_index > 0:
             self.current_index -= 1
             self.load_image()
+            self.load_label()  # Load corresponding label after loading image
+
 
     def select_image(self, item):
         self.current_index = self.image_list.currentRow()
@@ -237,7 +238,7 @@ class ImageLabeler(QMainWindow):
                 item.setCheckState(2)  # Check the item if completed
             else:
                 item.setCheckState(0)  # Uncheck the item if not completed
-    
+
     def zoom_in(self):
         self.scale_factor *= 1.1  # Increase scale factor for zoom in
         self.load_image()  # Reload image with the new scale
@@ -245,7 +246,6 @@ class ImageLabeler(QMainWindow):
     def zoom_out(self):
         self.scale_factor /= 1.1  # Decrease scale factor for zoom out
         self.load_image()  # Reload image with the new scale
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
