@@ -3,7 +3,7 @@ import os
 import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QLabel, QPushButton, 
                              QVBoxLayout, QWidget, QFileDialog, QListWidget, QProgressBar,
-                             QHBoxLayout, QFrame, QScrollArea)
+                             QHBoxLayout, QFrame, QScrollArea, QLineEdit, QMessageBox)
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
@@ -60,10 +60,14 @@ class ImageLabeler(QMainWindow):
         left_layout.addWidget(self.scroll_area)
 
         # Label display widget
-        self.label_display = QLabel(self)
-        self.label_display.setAlignment(Qt.AlignCenter)
+        self.label_display = QLineEdit(self)
+        # self.label_display.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.label_display)
 
+        # Submit button to save the updated label
+        self.submit_button = QPushButton("Submit", self)
+        self.submit_button.clicked.connect(self.submit_label)
+        left_layout.addWidget(self.submit_button)
 
         # OK and Not OK counter display widget
         counter_frame = QFrame(self)
@@ -181,8 +185,15 @@ class ImageLabeler(QMainWindow):
         if self.image_paths:
             image_name = os.path.basename(self.image_paths[self.current_index])
             label_name = image_name[:-4]  # Remove the image extension to match the label filename
-            label_text = self.labels.get(label_name, "No label found")
+            label_text = self.labels.get(label_name, "")
             self.label_display.setText(label_text)  # Update the label display widget
+
+    # def load_label(self):
+    #     if self.image_paths:
+    #         image_name = os.path.basename(self.image_paths[self.current_index])
+    #         label_name = image_name[:-4]  # Remove the image extension to match the label filename
+    #         label_text = self.labels.get(label_name, "")  # Get the label, default to empty if not found
+    #         self.label_edit.setText(label_text)  # Set the text in the editable field
 
 
     def next_image(self):
@@ -246,6 +257,76 @@ class ImageLabeler(QMainWindow):
     def zoom_out(self):
         self.scale_factor /= 1.1  # Decrease scale factor for zoom out
         self.load_image()  # Reload image with the new scale
+
+    # def submit_label(self):
+    #     if self.image_paths and self.labels_path:
+    #         image_name = os.path.basename(self.image_paths[self.current_index])
+    #         label_name = image_name[:-4]  # Remove the image extension to get the label name
+
+    #         # Get the new label from the QLineEdit
+    #         new_label = self.label_edit.text()
+
+    #         # Update the label dictionary
+    #         self.labels[label_name] = new_label
+
+    #         # Write the updated label back to the corresponding file in the labels path
+    #         label_file_path = os.path.join(self.labels_path, label_name + '.txt')
+    #         with open(label_file_path, 'w') as file:
+    #             file.write(new_label)
+
+    #         # Optionally, show a message that the label was saved
+    #         QMessageBox.information(self, "Success", f"Label for {image_name} updated successfully!")
+
+    def open_labels_path(self):
+        # Open a file dialog to select the labels directory
+        self.labels_path = QFileDialog.getExistingDirectory(self, "Select Labels Directory")
+        
+        # Optionally, load existing labels from the directory
+        if self.labels_path:
+            self.load_labels()
+
+    def load_labels(self):
+        self.labels = {}
+        for filename in os.listdir(self.labels_path):
+            if filename.endswith(".txt"):
+                label_name = filename[:-4]  # Remove .txt extension
+                with open(os.path.join(self.labels_path, filename), 'r') as file:
+                    self.labels[label_name] = file.read().strip()
+    
+    def open_labels_path(self):
+        # Open a file dialog to select the labels directory
+        self.labels_path = QFileDialog.getExistingDirectory(self, "Select Labels Directory")
+        
+        # Load existing labels from the directory
+        if self.labels_path:
+            self.load_labels()
+
+    def load_labels(self):
+        self.labels = {}
+        for filename in os.listdir(self.labels_path):
+            if filename.endswith(".txt"):
+                label_name = filename[:-4]  # Remove .txt extension
+                with open(os.path.join(self.labels_path, filename), 'r') as file:
+                    self.labels[label_name] = file.read().strip()
+    
+    def submit_label(self):
+        if self.image_paths and self.labels_path:
+            image_name = os.path.basename(self.image_paths[self.current_index])
+            label_name = image_name[:-4]  # Remove the image extension to get the label name
+
+            # Get the new label from the QLineEdit
+            new_label = self.label_display.text()
+
+            # Update the label dictionary
+            self.labels[label_name] = new_label
+
+            # Write the updated label back to the corresponding file in the labels path
+            label_file_path = os.path.join(self.labels_path, label_name + '.txt')
+            with open(label_file_path, 'w') as file:
+                file.write(new_label)
+
+            # Optionally, show a message that the label was saved
+            # QMessageBox.information(self, "Success", f"Label for {image_name} updated successfully!")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
