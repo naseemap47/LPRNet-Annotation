@@ -1,6 +1,6 @@
 # LPRNet-Annotation
 
-## Tutorial
+## 📖 Tutorial
 ![app](https://github.com/naseemap47/LPRNet-Annotation/blob/master/.assets/app1.png)
 
 ### Step 1
@@ -12,4 +12,4 @@ Click **Files -> Open Labels Path -> Select Labels Folder**
 
 Fill the text field with Number plate number.<br>
 
-**Fill Text -> Sumbit -> Next**
+**Fill Text -> Submit -> Next**
